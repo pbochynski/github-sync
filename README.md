@@ -1,4 +1,6 @@
-github-sync.js is a small script to keep in sync labels and milestones across many repositories and organizations. You can use it also to sync github.com repositories with your github enterprise installation. To write changes to the target repositories you need to provide a token. If you work in 
+# Overview
+
+github-sync.js is a small script to keep in sync labels and milestones across many repositories and organizations. You can also use it to sync github.com repositories with your github enterprise installation. 
 
 # Installation
 
@@ -6,6 +8,14 @@ Checkout repository and run:
 ```
 npm install
 ```
+# Authorization / authentication
+To write changes to the target repositories you need to provide a token. You can get one from GitHub -> Settings -> Developers Settings -> Personal access tokens. If you work with different instances of github you can provide separate access tokens: source-token and target token. Both fallback to the token option and finally to anonymous access. Please be aware that github rate limiting is very aggressive for anonymous access, so you will be probably blocked after few tries.
+
+# Dry-run mode
+If you are not sure what will happen after execute the command you can run the script with `--dry-run` option. It will run in the read only mode and will write down all the operations that should be executed.
+
+# Update-only mode
+Update only mode cn be useful if you do not want to create all the labels or milestones in the target reposiotries, but you want to unify descriptions, colors (for labels) or due dates (for milestones).
 
 # Usage examples
 
