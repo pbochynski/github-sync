@@ -1,0 +1,15 @@
+{
+  "name": "github-sync",
+  "version": "0.0.1",
+  "description": "Tool to sync milestones and labels between github repositories (organizations)",
+  "main": "github-sync.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@octokit/rest": "^18.0.9",
+    "yargs": "^16.1.1"
+  }
+}
