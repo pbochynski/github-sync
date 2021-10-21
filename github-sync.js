@@ -21,7 +21,7 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
     },
     'target': {
       alias: 't',
-      array: true,      
+      array: true,
       describe: 'target repositories',
       demandOption: true
     },
@@ -87,7 +87,7 @@ async function listRepos(octokit, org) {
   const data = await octokit.paginate(octokit.repos.listForOrg, {
     org
   });
-  let repos = data.filter(r=>!r.archived).map(r => { return { repo: r.name, owner: r.owner.login } })
+  let repos = data.filter(r => !r.archived).map(r => { return { repo: r.name, owner: r.owner.login } })
   return repos;
 }
 
@@ -116,18 +116,28 @@ function filterByRegExpList(src, regExpList, field) {
 }
 
 function equalMilestones(m1, m2) {
+  if (m1.state != m2.state)
+    return false;
   if (m1.description != m2.description)
     return false;
   if (m1.due_on && m1.due_on)
     return m1.due_on.substring(0, 10) == m2.due_on.substring(0, 10)
   return m1.due_on == m2.due_on;
 }
+function clean(obj) {
+  for (var propName in obj) {
+    if (obj[propName] === null || obj[propName] === undefined) {
+      delete obj[propName];
+    }
+  }
+  return obj
+}
 
 async function syncMilestones(argv) {
   let { milestones } = await readSource(argv);
   milestones = filterByRegExpList(milestones, argv.list, "title");
   console.log("Source milestones:")
-  console.dir(milestones.map((m) => { return { title: m.title, description: m.description, due_on: m.due_on } }));
+  console.dir(milestones.map((m) => { return { title: m.title, description: m.description, due_on: m.due_on, state: m.state } }));
 
   let octokit = new Octokit({ baseUrl: argv.targetBaseUrl, auth: argv.targetToken || argv.token });
   let targets = await readTargets(octokit);
@@ -141,18 +151,26 @@ async function syncMilestones(argv) {
     for (let milestone of milestones) {
       let targetMilestone = list.find(item => item.title == milestone.title)
       if (targetMilestone) {
+        if (milestone.state=='closed' && targetMilestone.open_issues>0) {
+          console.log("Warning: milestone with open issues is closed! (%s/%s %s)",t.owner, t.repo, milestone.title);
+        }
         if (equalMilestones(milestone, targetMilestone)) {
           console.log("Already up to date: %s/%s %s", t.owner, t.repo, milestone.title);
         } else {
-          console.log("Update %s/%s %s: %s->%s, %s->%s", t.owner, t.repo, milestone.title, targetMilestone.due_on, milestone.due_on, targetMilestone.description, milestone.description);
+          console.log("Update %s/%s %s: %s->%s, %s->%s, %s->%s", t.owner, t.repo, milestone.title,
+            targetMilestone.due_on, milestone.due_on,
+            targetMilestone.description, milestone.description,
+            targetMilestone.state, milestone.state
+          );
           if (!argv.dryRun) {
-            octokit.issues.updateMilestone({
+            octokit.issues.updateMilestone(clean({
               owner: t.owner,
               repo: t.repo,
               milestone_number: targetMilestone.number,
               due_on: milestone.due_on,
-              description: milestone.description
-            });
+              description: milestone.description,
+              state: milestone.state
+            }));
 
           }
         }
@@ -160,13 +178,13 @@ async function syncMilestones(argv) {
         if (!argv.updateOnly) {
           console.log("Create %s/%s %s", t.owner, t.repo, milestone.title);
           if (!argv.dryRun) {
-            octokit.issues.createMilestone({
+            octokit.issues.createMilestone(clean({
               owner: t.owner,
               repo: t.repo,
               title: milestone.title,
               due_on: milestone.due_on,
               description: milestone.description
-            });
+            }));
           }
         }
       }
