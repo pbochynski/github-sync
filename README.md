@@ -15,7 +15,7 @@ To write changes to the target repositories you need to provide a token. You can
 If you are not sure what will happen after execute the command you can run the script with `--dry-run` option. It will run in the read only mode and will write down all the operations that should be executed.
 
 ## Update-only mode
-Update only mode cn be useful if you do not want to create all the labels or milestones in the target reposiotries, but you want to unify descriptions, colors (for labels) or due dates (for milestones).
+Update only mode can be useful if you do not want to create all the labels or milestones in the target reposiotries, but you want to unify descriptions, colors (for labels) or due dates (for milestones).
 
 ## Usage examples
 
