@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 const { Octokit } = require("@octokit/rest");
 
+
 const argv = require('yargs/yargs')(process.argv.slice(2))
   .usage('Usage: $0 <command> [options]')
   .options({
     'source': {
       alias: 's',
       describe: 'source repository',
-      demandOption: true
     },
     'source-base-url': {
       describe: 'base url of github api for the source repository',
@@ -58,14 +58,14 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .example('$0 labels -s org/repo -t org2 org3/repo --token github_personal_token')
   .example('$0 milestones -s org/repo -t org --dry-run')
   .example('$0 milestones -s org/repo -t org --update-only')
+  .example('$0 delete-empty-milestones -t org')
   .command('milestones', 'sync milestones', {}, syncMilestones)
+  .command('delete-empty-milestones', 'delete empty milestones (without issues)', {}, deleteEmptyMilestones)
   .demandCommand(1, 1, 'Command is missing')
   .strict()
   .wrap(null)
   .help()
   .argv
-
-//console.dir(argv);
 
 async function readSource(argv) {
   let octokit = new Octokit({ baseUrl: argv.sourceBaseUrl, auth: argv.sourceToken || argv.token });
@@ -91,7 +91,7 @@ async function listRepos(octokit, org) {
   return repos;
 }
 
-async function readTargets(octokit) {
+async function readTargets(argv, octokit) {
   let targets = [];
   if (argv.target) {
     for (const t of argv.target) {
@@ -120,7 +120,7 @@ function equalMilestones(m1, m2) {
     return false;
   if (m1.description != m2.description)
     return false;
-  if (m1.due_on && m1.due_on)
+  if (m1.due_on && m2.due_on)
     return m1.due_on.substring(0, 10) == m2.due_on.substring(0, 10)
   return m1.due_on == m2.due_on;
 }
@@ -132,6 +132,31 @@ function clean(obj) {
   }
   return obj
 }
+async function deleteEmptyMilestones(argv) {
+  let octokit = new Octokit({ baseUrl: argv.targetBaseUrl, auth: argv.targetToken || argv.token });
+  let targets = await readTargets(argv, octokit);
+  for (let t of targets) {
+    let list = await octokit.paginate(octokit.issues.listMilestones, {
+      owner: t.owner,
+      repo: t.repo,
+      state: 'all'
+    });
+    //console.log(JSON.stringify(list))
+    let milestones = filterByRegExpList(list, argv.list, "title");
+    for (let milestone of milestones) {
+      if (milestone.state == 'closed' && milestone.open_issues == 0 && milestone.closed_issues == 0) {
+        console.log("Delete closed and empty milestone: %s/%s %s", t.owner, t.repo, milestone.title)
+        if (!argv.dryRun) {
+          octokit.issues.deleteMilestone({
+            owner: t.owner,
+            repo: t.repo,
+            milestone_number: milestone.number
+          });
+        }
+      }
+    }
+  }
+}
 
 async function syncMilestones(argv) {
   let { milestones } = await readSource(argv);
@@ -140,7 +165,7 @@ async function syncMilestones(argv) {
   console.dir(milestones.map((m) => { return { title: m.title, description: m.description, due_on: m.due_on, state: m.state } }));
 
   let octokit = new Octokit({ baseUrl: argv.targetBaseUrl, auth: argv.targetToken || argv.token });
-  let targets = await readTargets(octokit);
+  let targets = await readTargets(argv, octokit);
 
   for (let t of targets) {
     let list = await octokit.paginate(octokit.issues.listMilestones, {
@@ -151,8 +176,8 @@ async function syncMilestones(argv) {
     for (let milestone of milestones) {
       let targetMilestone = list.find(item => item.title == milestone.title)
       if (targetMilestone) {
-        if (milestone.state=='closed' && targetMilestone.open_issues>0) {
-          console.log("Warning: milestone with open issues is closed! (%s/%s %s)",t.owner, t.repo, milestone.title);
+        if (milestone.state == 'closed' && targetMilestone.open_issues > 0) {
+          console.log("Warning: milestone with open issues is closed! (%s/%s %s)", t.owner, t.repo, milestone.title);
         }
         if (equalMilestones(milestone, targetMilestone)) {
           console.log("Already up to date: %s/%s %s", t.owner, t.repo, milestone.title);
@@ -199,7 +224,7 @@ async function syncLabels(argv) {
   console.log(labels.map((l) => { return { name: l.name, description: l.description, color: l.color } }));
 
   let octokit = new Octokit({ baseUrl: argv.targetBaseUrl, auth: argv.targetToken || argv.token });
-  let targets = await readTargets(octokit);
+  let targets = await readTargets(argv, octokit);
 
   for (let t of targets) {
     let labelList = await octokit.paginate(octokit.issues.listLabelsForRepo, {

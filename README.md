@@ -44,5 +44,10 @@ Only update descriptions and due dates for all milestones from org to match mile
 github-sync.js milestones -s org/repo -t org --update-only
 ```
 
+Delete closed milestones without any issue (empty) from target org/repo:
+```
+github-sync.js delete-empty-milestones -t org
+```
+
 ## Contribution
 If you find some problems feel free to create issues / pull requests.
