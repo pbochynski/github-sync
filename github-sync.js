@@ -9,15 +9,18 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
       alias: 's',
       describe: 'source repository',
     },
+    'base-url': {
+      describe: 'base url of github api. Use source-base-url or target-base-url to set different base-urls for source and target',
+      default: "https://api.github.com",
+      demandOption: false
+    },
     'source-base-url': {
       describe: 'base url of github api for the source repository',
-      default: "https://api.github.com",
-      demandOption: true
+      demandOption: false
     },
     'target-base-url': {
       describe: 'base url of github api for the target repositories',
-      default: "https://api.github.com",
-      demandOption: true
+      demandOption: false
     },
     'target': {
       alias: 't',
@@ -68,7 +71,7 @@ const argv = require('yargs/yargs')(process.argv.slice(2))
   .argv
 
 async function readSource(argv) {
-  let octokit = new Octokit({ baseUrl: argv.sourceBaseUrl, auth: argv.sourceToken || argv.token });
+  let octokit = new Octokit({ baseUrl: argv.sourceBaseUrl || argv.baseUrl, auth: argv.sourceToken || argv.token });
   let owner = argv.source.split('/')[0]
   let repo = argv.source.split('/')[1]
   let milestones = await octokit.paginate(octokit.issues.listMilestones, {
@@ -133,7 +136,7 @@ function clean(obj) {
   return obj
 }
 async function deleteEmptyMilestones(argv) {
-  let octokit = new Octokit({ baseUrl: argv.targetBaseUrl, auth: argv.targetToken || argv.token });
+  let octokit = new Octokit({ baseUrl: argv.targetBaseUrl || argv.baseUrl, auth: argv.targetToken || argv.token });
   let targets = await readTargets(argv, octokit);
   for (let t of targets) {
     let list = await octokit.paginate(octokit.issues.listMilestones, {
@@ -164,7 +167,7 @@ async function syncMilestones(argv) {
   console.log("Source milestones:")
   console.dir(milestones.map((m) => { return { title: m.title, description: m.description, due_on: m.due_on, state: m.state } }));
 
-  let octokit = new Octokit({ baseUrl: argv.targetBaseUrl, auth: argv.targetToken || argv.token });
+  let octokit = new Octokit({ baseUrl: argv.targetBaseUrl || argv.baseUrl, auth: argv.targetToken || argv.token });
   let targets = await readTargets(argv, octokit);
 
   for (let t of targets) {
@@ -223,7 +226,7 @@ async function syncLabels(argv) {
   console.log("Source labels:");
   console.log(labels.map((l) => { return { name: l.name, description: l.description, color: l.color } }));
 
-  let octokit = new Octokit({ baseUrl: argv.targetBaseUrl, auth: argv.targetToken || argv.token });
+  let octokit = new Octokit({ baseUrl: argv.targetBaseUrl || argv.baseUrl, auth: argv.targetToken || argv.token });
   let targets = await readTargets(argv, octokit);
 
   for (let t of targets) {
