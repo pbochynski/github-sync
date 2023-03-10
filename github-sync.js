@@ -224,7 +224,7 @@ async function syncLabels(argv) {
   let { labels } = await readSource(argv);
   labels = filterByRegExpList(labels, argv.list, "name")
   console.log("Source labels:");
-  console.log(labels.map((l) => { return { name: l.name, description: l.description, color: l.color } }));
+  console.log(JSON.stringify(labels.map((l) => { return { name: l.name, description: l.description, color: l.color } })));
 
   let octokit = new Octokit({ baseUrl: argv.targetBaseUrl || argv.baseUrl, auth: argv.targetToken || argv.token });
   let targets = await readTargets(argv, octokit);
